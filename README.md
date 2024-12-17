@@ -5,6 +5,10 @@ While Currently Not At Its Final Stable Build, It Is Still Very Functional And H
 
 Interesting Lessons Have Been Learned In This Project With Multithreading Contention And Means Of Cleanly Partitioning Regions To Allow For Non-Conflicting--And In Turn Non-Synchronizing Regions--To Be Employed For Intuitive And Scalable Solutions.
 
+While The Collision Detection Currently Is Quite Primitive (Mostly With The Screen Edges As Theres Cases Where Particles Clip Out Of The Visual Region) It Still Has Worked Great And Will Be Iterated On In Future Patches For More Dynamic And Stable Detection Algorithms. If Two Particles Currently Collide, They Don't Have Rigid Bodies And Have A Binding Impulse Force Which Will Try To Stick Them Together If They Collide As Would Particles With Chemical Bonding (Albeit Very Primitive Currently). Also The Codebase Mainly Resides In The Driver.cpp Which Is Kind Of Party-Foul But Will Be Cleaned Up In Future Patches.
+
+You Can Also Click To Create A Force-Pulse Which Is Basically A Circular Region From Your Cursor Which Will Push Away All Particles In The Circles Radius If You Left Click, And Pull In All Particles In The Circles Radius If You Right Click.
+
 ----------------------------------------------
 
 <img src="https://github.com/user-attachments/assets/b42434d4-bd8f-46c2-b5e7-5de18d4db46b" alt="Cornstarch <3" width="75" height="99"> <img src="https://github.com/user-attachments/assets/b42434d4-bd8f-46c2-b5e7-5de18d4db46b" alt="Cornstarch <3" width="75" height="99"> <img src="https://github.com/user-attachments/assets/b42434d4-bd8f-46c2-b5e7-5de18d4db46b" alt="Cornstarch <3" width="75" height="99"> <img src="https://github.com/user-attachments/assets/b42434d4-bd8f-46c2-b5e7-5de18d4db46b" alt="Cornstarch <3" width="75" height="99"> 
