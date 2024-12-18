@@ -17,17 +17,172 @@ You Can Also Click To Create A Force-Pulse Which Is Basically A Circular Region 
 
 The Program Starts By Initializing A Window Based Upon The Custom ParticleWindow Class. This Class Works As Means Of Encapsulating All Data Pertaining To The Simulation Including A GLFW Window, The Shader For This Provided Window, As Well As Data Pertaining To Rendering And The Current Particles Being Simulated.
 
-When The Process Initializes The Class, It Starts By Contexualizing The Window For OpenGL Buffer Contexting As Well As Generating Our Particles Through _**initParticles(...)**_.
+<h4>Initialization</h4>
+When The Process Initializes The Class, It Starts By Contextualizing The Window For OpenGL Buffer Contexting As Well As Generating Our Particles Through initParticles.
 
-In _**initParticles(...)**_ We Utilize Random Generation To Get Varying Particles From Their Color, Initial Position, Initial Velocity, As Well As Their Radial Size. For This Current Project, Instead Of Utilizing An Array-Of-Structs (AoS [Array Of Particle Instances]) We Utilize An Struct-Of-Arrays (SoA [Instance Of Particle Traits Arrays]) To Decrease Cache Thrashing And Increase Locality Of Shared Data Which We Utilize In Our Simulation As Ensuring Data Like Positions Are All Accessed And Checked Together In The Cache Is Better Than Having Multiple Particles And All Their Data Being In The Cache Basically One-At-A-Time. This Is A Trade Off As While More Efficient It Is A Little Less Readable And Intuitive As Individual Particles Are Represented Through Indexes Instead Of Class Instances. After Each Particle Has Its Provided Backend Members Initialized (Centriod, Radii, Color, Velocity, ID), We Start Building The Circles Visual Elements Through A Circle Algorithm Which Generates All Vertexes For The VBO (Vertex Array Buffer) And Vertices For The EBO (Element Array Buffer). These Two Entries Allow OpenGL To Properly Render Our Particles.
+    C++
+    ParticleWindow::ParticleWindow(int width, int height)
+        : particles(PARTICLE_COUNT), collisionMatrix(BIN_SIZE), updateBarrier(NUM_THREADS + 1), renderBarrier(NUM_THREADS + 1) {
+        if (!glfwInit()) {
+            throw std::runtime_error("Failed to initialize GLFW");
+        }
+    
+        window = glfwCreateWindow(width, height, "Particle Simulation", NULL, NULL);
+        if (!window) {
+            glfwTerminate();
+            throw std::runtime_error("Failed to create GLFW window");
+        }
+    
+        glfwMakeContextCurrent(window);
+        gladLoadGL();
+        glfwSetWindowUserPointer(window, this);
+        glfwSetMouseButtonCallback(window, mouseButtonCallbackWrapper);
+        shaderEngine = Shader("default.vert", "default.frag");
+        shaderEngine.Activate();
+        std::vector<GLuint> indices;
+        initParticles(indices);
+        glGenVertexArrays(1, &VAO);
+        glBindVertexArray(VAO);
+        glGenBuffers(1, &VBO);
+        glGenBuffers(1, &EBO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
+        indiceCount = indices.size();
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(2 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+    
+        for (int i = 0; i < NUM_THREADS; ++i) {
+            threads.emplace_back(&ParticleWindow::updateParticlesThreaded, this, i);
+        }
+    }
+    
+<h4>Particle Generation</h4>
+In initParticles We Utilize Random Generation To Get Varying Particles From Their Color, Initial Position, Initial Velocity, As Well As Their Radial Size. For This Current Project, Instead Of Utilizing An Array-Of-Structs (AoS [Array Of Particle Instances]) We Utilize A Struct-Of-Arrays (SoA [Instance Of Particle Traits Arrays]) To Decrease Cache Thrashing And Increase Locality Of Shared Data. This Ensures Data Like Positions Are All Accessed And Checked Together In The Cache, Which Is Better Than Having Multiple Particles And All Their Data Being In The Cache One-At-A-Time. This Is A Trade-Off As While More Efficient, It Is A Little Less Readable And Intuitive As Individual Particles Are Represented Through Indexes Instead Of Class Instances. After Each Particle Has Its Backend Members Initialized (Centroid, Radii, Color, Velocity, ID), We Start Building The Circles' Visual Elements Through A Circle Algorithm Which Generates All Vertices For The VBO (Vertex Array Buffer) And Indices For The EBO (Element Array Buffer). These Two Entries Allow OpenGL To Properly Render Our Particles.
 
-After Generation Is Done In _**initParticles(...)**_ We Then Create Threads Which Allows Us To Partition The Workload For Collision Detection To Multiple "Workers" To Allow Us To Gain Runtime Benefits As Instead Of One Thread Sequentially Updating All Particles Itself It Divides The Workload To Multiple Threads (Two Threads Currently As From Testing It Seemed Two Allowed Runtime Benefits Without Diminishing Returns From Context Swapping). These Threads Are Synchronized With The Main Window Thread Through The _**updateBarrier**_ & _**renderBarrier**_ Barriers To Ensure Workers Render For Each Frame And Don't Run Ahead Frames Which Could Cause Artifacts In Our Simulation. 
+    C++
+    void ParticleWindow::initParticles(std::vector<GLuint>& indices) {
+        std::random_device rd;
+        std::mt19937 seed(rd());
+        std::uniform_real_distribution<float> radiusDist(0.005f, 0.025f);
+        std::uniform_real_distribution<float> positionDist(-0.799f, 0.799f);
+        std::uniform_real_distribution<float> colorDist(0.1f, 1.0f);
+        std::uniform_real_distribution<float> velocityDist(-0.00015f, 0.00015f);
+    
+        for (unsigned int i = 0; i < PARTICLE_COUNT; i++) {
+            particles.centroids[i] = glm::vec2(positionDist(seed), positionDist(seed));
+            particles.radii[i] = radiusDist(seed);
+            particles.colors[i] = glm::vec3(colorDist(seed), colorDist(seed), colorDist(seed));
+            particles.velocities[i] = glm::vec2(velocityDist(seed), velocityDist(seed)) / particles.radii[i];
+            particles.IDs[i] = vertices.size();
+    
+            // Generate initial vertices
+            vertices.push_back({ particles.centroids[i], particles.colors[i] });
+            for (int j = 0; j < SEGMENT_CNT; ++j) {
+                float angle = (2.0f * M_PI * j) / SEGMENT_CNT;
+                glm::vec2 pos = particles.centroids[i] + particles.radii[i] * glm::vec2(cos(angle), sin(angle));
+                vertices.push_back({ pos, particles.colors[i] });
+            }
+        }
+    }
 
-Each Thread Does The Motion & Collision Detection For Particles It Is Delegated. This Delegation Is Done By Providing Each Thread With A Start Position In The SoA Starting At Index 0 And Going Up Based On Its Provided _**thread_id**_ (Simply What Thread Was Initialized First, Second, Etc. [I.E. First Thread Initialized Is 0, Second 1]) Then It Increments By The _**NUM_THREADS**_ We Have To Allow It To Jump Across To The Next Thread It Is Delegated, Ensuring Multiple Threads Don't Access The Same Particle (Which Could Lead To Double-Updates Which Could Lead To Crashes Or Unintended Behaivor). Each Particle Will Reflect Off Window Borders By Inverting Its Velocity, And If Colliding With A Particle Will Cause The Binding Impulsive Force On These Two Particles; This Force Is Light To Allow Bonds To Be Broken And To Ensure Particles Don't Snap Together And Is More A Gradual Attraction Towards Eachother.
+<h4>Threading</h4>
+After Generation Is Done In initParticles We Then Create Threads Which Allows Us To Partition The Workload For Collision Detection To Multiple "Workers" To Allow Us To Gain Runtime Benefits As Instead Of One Thread Sequentially Updating All Particles Itself It Divides The Workload To Multiple Threads (Two Threads Currently As From Testing It Seemed Two Allowed Runtime Benefits Without Diminishing Returns From Context Swapping). These Threads Are Synchronized With The Main Window Thread Through The updateBarrier & renderBarrier Barriers To Ensure Workers Render For Each Frame And Don't Run Ahead Frames Which Could Cause Artifacts In Our Simulation.
 
-We Then Start On The ParticleWindow's _**run(...)**_ Function In The Main Thread Which Is The Main Rendering Loop. This Is A Simple Rendering Loop With A Target Frame Rate To Reach And Simple Buffer Clearing And Swapping. Other Than This, We Have The _**addParticle(...)**_ Function Which For Each Frame And Each Particle Will Emplace Them In The collisionMatrix (Our HashMap). We Will Then Arrive At Our _**updateBarrier**_ Which Will Tell Our Worker Threads To Do Their Collision And Motion Logic As We Wait At The _**renderBarrier**_ Which Will Push Us Forward After Each Worker Has Finalized Their Collision And Motion Logic For Us To Then Render The Results In _**renderParticles(...)**_. We Then Clear Our HashMap For The Next Frame As We Will Have To Again Load Our Particles Into The HashMap Using Their New Positions After This Frame.
+    C++
+    for (int i = 0; i < NUM_THREADS; ++i) {
+        threads.emplace_back(&ParticleWindow::updateParticlesThreaded, this, i);
+    }
+    
+Each Thread Does The Motion & Collision Detection For Particles It Is Delegated. This Delegation Is Done By Providing Each Thread With A Start Position In The SoA Starting At Index 0 And Going Up Based On Its Provided thread_id (Simply What Thread Was Initialized First, Second, Etc. [i.e., first thread initialized is 0, second is 1]) Then It Increments By The NUM_THREADS We Have To Allow It To Jump Across To The Next Thread It Is Delegated, Ensuring Multiple Threads Don't Access The Same Particle (Which Could Lead To Double-Updates Which Could Lead To Crashes Or Unintended Behavior). Each Particle Will Reflect Off Window Borders By Inverting Its Velocity, And If Colliding With A Particle Will Cause The Binding Impulsive Force On These Two Particles; This Force Is Light To Allow Bonds To Be Broken And To Ensure Particles Don't Snap Together And Is More A Gradual Attraction Towards Each Other.
 
-This Is The Main Loop Of Our Simulation; We Also Include A _**mouseButtonCallbackWrapper(...)**_ Which Will Call Our _**mouseButtonCallback(...)**_ Which Will Check What Type Of Click We Have Done On The Screen And Apply The Provided Repulsive Force To All Particles In That Radius In _**applyRepulsiveForce(...)**_.
+    C++
+    void ParticleWindow::updateParticlesThreaded(int thread_id) {
+        while (!terminateThreads) {
+              updateBarrier.arrive_and_wait();
+  
+          // Process Particles Assigned To This Thread
+          for (size_t i = thread_id; i < PARTICLE_COUNT; i += NUM_THREADS) {
+              particles.centroids[i].x += particles.velocities[i].x;
+              particles.centroids[i].y += particles.velocities[i].y;
+  
+              // Reflect Velocity At Boundaries
+              if (particles.centroids[i].x - particles.radii[i] < -1.0f || particles.centroids[i].x + particles.radii[i] > 1.0f) {
+                  particles.velocities[i].x = -particles.velocities[i].x;
+              }
+              if (particles.centroids[i].y - particles.radii[i] < -1.0f || particles.centroids[i].y + particles.radii[i] > 1.0f) {
+                  particles.velocities[i].y = -particles.velocities[i].y;
+              }
+  
+              // Update VBO
+              vertices[particles.IDs[i]].position = particles.centroids[i];
+              for (int j = 0; j < SEGMENT_CNT; ++j) {
+                  float angle = (2.0f * M_PI * j) / SEGMENT_CNT;
+                  glm::vec2 pos = particles.centroids[i] + particles.radii[i] * glm::vec2(cos(angle), sin(angle));
+                  vertices[particles.IDs[i] + j + 1].position = pos;
+              }
+          }
+  
+          renderBarrier.arrive_and_wait();
+        }
+    }
+
+<h4>Main Loop</h4>
+We Then Start On The ParticleWindow's run Function In The Main Thread Which Is The Main Rendering Loop. This Is A Simple Rendering Loop With A Target Frame Rate To Reach And Simple Buffer Clearing And Swapping. Other Than This, We Have The addParticle Function Which For Each Frame And Each Particle Will Emplace Them In The collisionMatrix (Our HashMap). We Will Then Arrive At Our updateBarrier Which Will Tell Our Worker Threads To Do Their Collision And Motion Logic As We Wait At The renderBarrier Which Will Push Us Forward After Each Worker Has Finalized Their Collision And Motion Logic For Us To Then Render The Results In renderParticles. We Then Clear Our HashMap For The Next Frame As We Will Have To Again Load Our Particles Into The HashMap Using Their New Positions After This Frame.
+
+    C++
+    void ParticleWindow::run() {
+        const float targetFrameDuration = 1.0f / 60.0f;
+
+    while (!glfwWindowShouldClose(window)) {
+        auto frameStart = std::chrono::high_resolution_clock::now();
+
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        for (size_t i = 0; i < PARTICLE_COUNT; i++) {
+            collisionMatrix.addParticle(i, particles.centroids[i]);
+        }
+
+        updateBarrier.arrive_and_wait();
+        renderBarrier.arrive_and_wait();
+
+        renderParticles();
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+
+        collisionMatrix.clear();
+
+        auto frameEnd = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<float> frameTime = frameEnd - frameStart;
+
+        float sleepDuration = targetFrameDuration - frameTime.count();
+        if (sleepDuration > 0) {
+            std::this_thread::sleep_for(std::chrono::duration<float>(sleepDuration));
+        }
+    }
+
+    glfwTerminate();
+    }
+
+
+Mouse Interaction
+This Is The Main Loop Of Our Simulation; We Also Include A mouseButtonCallbackWrapper Which Will Call Our mouseButtonCallback Which Will Check What Type Of Click We Have Done On The Screen And Apply The Provided Repulsive Force To All Particles In That Radius In applyRepulsiveForce.
+
+    C++
+    void ParticleWindow::mouseButtonCallback(int button, int action) {
+        if (action == GLFW_PRESS) {
+            double xpos, ypos;
+            glfwGetCursorPos(window, &xpos, &ypos);
+            clickPosition = glm::vec2(2.0f * (xpos / WINDOW_WIDTH) - 1.0f, 1.0f - 2.0f * (ypos / WINDOW_HEIGHT));
+            isClick = button;
+            applyRepulsiveForce();
+        }
+    }
+By incorporating these snippets and explanations, the readability and clarity of "The Breakdown" section are enhanced, providing a more comprehensive understanding while maintaining the original word count.
 
 <img src="https://github.com/user-attachments/assets/0c481edf-693f-4b4b-bca2-f6017a3e15d4" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/0c481edf-693f-4b4b-bca2-f6017a3e15d4" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/0c481edf-693f-4b4b-bca2-f6017a3e15d4" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/0c481edf-693f-4b4b-bca2-f6017a3e15d4" alt="Cornstarch <3" width="55" height="49"> 
 
