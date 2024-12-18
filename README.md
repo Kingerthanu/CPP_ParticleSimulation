@@ -20,7 +20,7 @@ The Program Starts By Initializing A Window Based Upon The Custom `ParticleWindo
 <h4>Initialization</h4>
 When The Process Initializes The Class, It Starts By Contextualizing The Window For OpenGL Buffer Contexting As Well As Generating Our Particles Through `initParticles(...)`.
 
-    C++
+    ```C++
     ParticleWindow::ParticleWindow(int width, int height)
         : particles(PARTICLE_COUNT), collisionMatrix(BIN_SIZE), updateBarrier(NUM_THREADS + 1), renderBarrier(NUM_THREADS + 1) {
         if (!glfwInit()) {
