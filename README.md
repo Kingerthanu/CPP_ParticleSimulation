@@ -20,45 +20,45 @@ The Program Starts By Initializing A Window Based Upon The Custom `ParticleWindo
 <h4>Initialization</h4>
 When The Process Initializes The Class, It Starts By Contextualizing The Window For OpenGL Buffer Contexting As Well As Generating Our Particles Through `initParticles(...)`.
 
-    ```C++
-    ParticleWindow::ParticleWindow(int width, int height)
-        : particles(PARTICLE_COUNT), collisionMatrix(BIN_SIZE), updateBarrier(NUM_THREADS + 1), renderBarrier(NUM_THREADS + 1) {
-        if (!glfwInit()) {
-            throw std::runtime_error("Failed to initialize GLFW");
-        }
-    
-        window = glfwCreateWindow(width, height, "Particle Simulation", NULL, NULL);
-        if (!window) {
-            glfwTerminate();
-            throw std::runtime_error("Failed to create GLFW window");
-        }
-    
-        glfwMakeContextCurrent(window);
-        gladLoadGL();
-        glfwSetWindowUserPointer(window, this);
-        glfwSetMouseButtonCallback(window, mouseButtonCallbackWrapper);
-        shaderEngine = Shader("default.vert", "default.frag");
-        shaderEngine.Activate();
-        std::vector<GLuint> indices;
-        initParticles(indices);
-        glGenVertexArrays(1, &VAO);
-        glBindVertexArray(VAO);
-        glGenBuffers(1, &VBO);
-        glGenBuffers(1, &EBO);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_DYNAMIC_DRAW);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
-        indiceCount = indices.size();
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(2 * sizeof(float)));
-        glEnableVertexAttribArray(1);
-    
-        for (int i = 0; i < NUM_THREADS; ++i) {
-            threads.emplace_back(&ParticleWindow::updateParticlesThreaded, this, i);
-        }
+```C++
+ParticleWindow::ParticleWindow(int width, int height)
+    : particles(PARTICLE_COUNT), collisionMatrix(BIN_SIZE), updateBarrier(NUM_THREADS + 1), renderBarrier(NUM_THREADS + 1) {
+    if (!glfwInit()) {
+        throw std::runtime_error("Failed to initialize GLFW");
     }
+
+    window = glfwCreateWindow(width, height, "Particle Simulation", NULL, NULL);
+    if (!window) {
+        glfwTerminate();
+        throw std::runtime_error("Failed to create GLFW window");
+    }
+
+    glfwMakeContextCurrent(window);
+    gladLoadGL();
+    glfwSetWindowUserPointer(window, this);
+    glfwSetMouseButtonCallback(window, mouseButtonCallbackWrapper);
+    shaderEngine = Shader("default.vert", "default.frag");
+    shaderEngine.Activate();
+    std::vector<GLuint> indices;
+    initParticles(indices);
+    glGenVertexArrays(1, &VAO);
+    glBindVertexArray(VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
+    indiceCount = indices.size();
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    for (int i = 0; i < NUM_THREADS; ++i) {
+        threads.emplace_back(&ParticleWindow::updateParticlesThreaded, this, i);
+    }
+}
     
 <h4>Particle Generation</h4>
 In `initParticles(...)` We Utilize Random Generation To Get Varying Particles From Their Color, Initial Position, Initial Velocity, As Well As Their Radial Size. For This Current Project, Instead Of Utilizing An Array-Of-Structs (AoS [Array Of Particle Instances]) We Utilize A Struct-Of-Arrays (SoA [Instance Of Particle Traits Arrays]) To Decrease Cache Thrashing And Increase Locality Of Shared Data. This Ensures Data Like Positions Are All Accessed And Checked Together In The Cache, Which Is Better Than Having Multiple Particles And All Their Data Being In The Cache One-At-A-Time. This Is A Trade-Off As While More Efficient, It Is A Little Less Readable And Intuitive As Individual Particles Are Represented Through Indexes Instead Of Class Instances. After Each Particle Has Its Backend Members Initialized (Centroid, Radii, Color, Velocity, ID), We Start Building The Circles' Visual Elements Through A Circle Algorithm Which Generates All Vertices For The VBO (Vertex Array Buffer) And Indices For The EBO (Element Array Buffer). These Two Entries Allow OpenGL To Properly Render Our Particles.
