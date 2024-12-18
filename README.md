@@ -59,6 +59,7 @@ ParticleWindow::ParticleWindow(int width, int height)
         threads.emplace_back(&ParticleWindow::updateParticlesThreaded, this, i);
     }
 }
+```
     
 <h4>Particle Generation</h4>
 In `initParticles(...)` We Utilize Random Generation To Get Varying Particles From Their Color, Initial Position, Initial Velocity, As Well As Their Radial Size. For This Current Project, Instead Of Utilizing An Array-Of-Structs (AoS [Array Of Particle Instances]) We Utilize A Struct-Of-Arrays (SoA [Instance Of Particle Traits Arrays]) To Decrease Cache Thrashing And Increase Locality Of Shared Data. This Ensures Data Like Positions Are All Accessed And Checked Together In The Cache, Which Is Better Than Having Multiple Particles And All Their Data Being In The Cache One-At-A-Time. This Is A Trade-Off As While More Efficient, It Is A Little Less Readable And Intuitive As Individual Particles Are Represented Through Indexes Instead Of Class Instances. After Each Particle Has Its Backend Members Initialized (Centroid, Radii, Color, Velocity, ID), We Start Building The Circles' Visual Elements Through A Circle Algorithm Which Generates All Vertices For The VBO (Vertex Array Buffer) And Indices For The EBO (Element Array Buffer). These Two Entries Allow OpenGL To Properly Render Our Particles.
