@@ -182,7 +182,7 @@ This Is The Main Loop Of Our Simulation; We Also Include A mouseButtonCallbackWr
             applyRepulsiveForce();
         }
     }
-By incorporating these snippets and explanations, the readability and clarity of "The Breakdown" section are enhanced, providing a more comprehensive understanding while maintaining the original word count.
+
 
 <img src="https://github.com/user-attachments/assets/0c481edf-693f-4b4b-bca2-f6017a3e15d4" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/0c481edf-693f-4b4b-bca2-f6017a3e15d4" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/0c481edf-693f-4b4b-bca2-f6017a3e15d4" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/0c481edf-693f-4b4b-bca2-f6017a3e15d4" alt="Cornstarch <3" width="55" height="49"> 
 
