@@ -207,6 +207,22 @@ void ParticleWindow::mouseButtonCallback(int button, int action)
 }
 ```
 
+<h4>Configurations</h4>
+At The Start Of The Code There Is A Section With A Lot Of Definitions For Precompilation, Some Of These Relate To The Amount Of Particles To Generate And Their Traits (Like Segment Count; `SEGMENT_CNT`, `PARTICLE_COUNT`), While Some Relate To The Means Of Hashing Our Given Screenspace (`BIN_SIZE`, `GRID_SIZE_X`, `GRID_SIZE_Y`), Others Also Being `WINDOW_HEIGHT` & `WINDOW_WIDTH` For The GLSL Window, And `M_PI` Being A Value For Pi For Trigonometry Computations And `NUM_THREADS` Being For Amount Of Workers To Use For Simulation Logic.
+
+```C++
+#define WINDOW_HEIGHT 1300
+#define WINDOW_WIDTH 1300
+#define SEGMENT_CNT 7
+#define PARTICLE_COUNT 500
+#define M_PI 3.14159265359
+#define BIN_SIZE 0.025f
+#define NUM_THREADS 2
+#define GRID_SIZE_X static_cast<int>(2.0f / BIN_SIZE)
+#define GRID_SIZE_Y static_cast<int>(2.0f / BIN_SIZE)
+```
+
+
 <img src="https://github.com/user-attachments/assets/0c481edf-693f-4b4b-bca2-f6017a3e15d4" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/0c481edf-693f-4b4b-bca2-f6017a3e15d4" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/0c481edf-693f-4b4b-bca2-f6017a3e15d4" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/0c481edf-693f-4b4b-bca2-f6017a3e15d4" alt="Cornstarch <3" width="55" height="49"> 
 
 ----------------------------------------------
