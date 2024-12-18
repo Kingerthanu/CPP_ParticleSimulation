@@ -18,10 +18,10 @@ You Can Also Click To Create A Force-Pulse Which Is Basically A Circular Region 
 The Program Starts By Initializing A Window Based Upon The Custom `ParticleWindow` Class. This Class Works As Means Of Encapsulating All Data Pertaining To The Simulation Including A GLFW Window, The Shader For This Provided Window, As Well As Data Pertaining To Rendering And The Current Particles Being Simulated.
 
 <h4>Initialization</h4>
-When The Process Initializes The Class, It Starts By Contextualizing The Window For OpenGL Buffer Contexting As Well As Generating Our Particles Through initParticles.
+When The Process Initializes The Class, It Starts By Contextualizing The Window For OpenGL Buffer Contexting As Well As Generating Our Particles Through `initParticles(...)`.
 
     C++
-    `ParticleWindow`::`ParticleWindow`(int width, int height)
+    ParticleWindow::ParticleWindow(int width, int height)
         : particles(PARTICLE_COUNT), collisionMatrix(BIN_SIZE), updateBarrier(NUM_THREADS + 1), renderBarrier(NUM_THREADS + 1) {
         if (!glfwInit()) {
             throw std::runtime_error("Failed to initialize GLFW");
@@ -56,15 +56,15 @@ When The Process Initializes The Class, It Starts By Contextualizing The Window 
         glEnableVertexAttribArray(1);
     
         for (int i = 0; i < NUM_THREADS; ++i) {
-            threads.emplace_back(&`ParticleWindow`::updateParticlesThreaded, this, i);
+            threads.emplace_back(&ParticleWindow::updateParticlesThreaded, this, i);
         }
     }
     
 <h4>Particle Generation</h4>
-In initParticles We Utilize Random Generation To Get Varying Particles From Their Color, Initial Position, Initial Velocity, As Well As Their Radial Size. For This Current Project, Instead Of Utilizing An Array-Of-Structs (AoS [Array Of Particle Instances]) We Utilize A Struct-Of-Arrays (SoA [Instance Of Particle Traits Arrays]) To Decrease Cache Thrashing And Increase Locality Of Shared Data. This Ensures Data Like Positions Are All Accessed And Checked Together In The Cache, Which Is Better Than Having Multiple Particles And All Their Data Being In The Cache One-At-A-Time. This Is A Trade-Off As While More Efficient, It Is A Little Less Readable And Intuitive As Individual Particles Are Represented Through Indexes Instead Of Class Instances. After Each Particle Has Its Backend Members Initialized (Centroid, Radii, Color, Velocity, ID), We Start Building The Circles' Visual Elements Through A Circle Algorithm Which Generates All Vertices For The VBO (Vertex Array Buffer) And Indices For The EBO (Element Array Buffer). These Two Entries Allow OpenGL To Properly Render Our Particles.
+In `initParticles(...)` We Utilize Random Generation To Get Varying Particles From Their Color, Initial Position, Initial Velocity, As Well As Their Radial Size. For This Current Project, Instead Of Utilizing An Array-Of-Structs (AoS [Array Of Particle Instances]) We Utilize A Struct-Of-Arrays (SoA [Instance Of Particle Traits Arrays]) To Decrease Cache Thrashing And Increase Locality Of Shared Data. This Ensures Data Like Positions Are All Accessed And Checked Together In The Cache, Which Is Better Than Having Multiple Particles And All Their Data Being In The Cache One-At-A-Time. This Is A Trade-Off As While More Efficient, It Is A Little Less Readable And Intuitive As Individual Particles Are Represented Through Indexes Instead Of Class Instances. After Each Particle Has Its Backend Members Initialized (Centroid, Radii, Color, Velocity, ID), We Start Building The Circles' Visual Elements Through A Circle Algorithm Which Generates All Vertices For The VBO (Vertex Array Buffer) And Indices For The EBO (Element Array Buffer). These Two Entries Allow OpenGL To Properly Render Our Particles.
 
     C++
-    void `ParticleWindow`::initParticles(std::vector<GLuint>& indices) {
+    void ParticleWindow::initParticles(std::vector<GLuint>& indices) {
         std::random_device rd;
         std::mt19937 seed(rd());
         std::uniform_real_distribution<float> radiusDist(0.005f, 0.025f);
@@ -90,17 +90,17 @@ In initParticles We Utilize Random Generation To Get Varying Particles From Thei
     }
 
 <h4>Threading</h4>
-After Generation Is Done In initParticles We Then Create Threads Which Allows Us To Partition The Workload For Collision Detection To Multiple "Workers" To Allow Us To Gain Runtime Benefits As Instead Of One Thread Sequentially Updating All Particles Itself It Divides The Workload To Multiple Threads (Two Threads Currently As From Testing It Seemed Two Allowed Runtime Benefits Without Diminishing Returns From Context Swapping). These Threads Are Synchronized With The Main Window Thread Through The updateBarrier & renderBarrier Barriers To Ensure Workers Render For Each Frame And Don't Run Ahead Frames Which Could Cause Artifacts In Our Simulation.
+After Generation Is Done In `initParticles(...)` We Then Create Threads Which Allows Us To Partition The Workload For Collision Detection To Multiple "Workers" To Allow Us To Gain Runtime Benefits As Instead Of One Thread Sequentially Updating All Particles Itself It Divides The Workload To Multiple Threads (Two Threads Currently As From Testing It Seemed Two Allowed Runtime Benefits Without Diminishing Returns From Context Swapping). These Threads Are Synchronized With The Main Window Thread Through The `updateBarrier` & `renderBarrier` Barriers To Ensure Workers Render For Each Frame And Don't Run Ahead Frames Which Could Cause Artifacts In Our Simulation.
 
     C++
     for (int i = 0; i < NUM_THREADS; ++i) {
-        threads.emplace_back(&`ParticleWindow`::updateParticlesThreaded, this, i);
+        threads.emplace_back(&ParticleWindow::updateParticlesThreaded, this, i);
     }
     
-Each Thread Does The Motion & Collision Detection For Particles It Is Delegated. This Delegation Is Done By Providing Each Thread With A Start Position In The SoA Starting At Index 0 And Going Up Based On Its Provided thread_id (Simply What Thread Was Initialized First, Second, Etc. [i.e., first thread initialized is 0, second is 1]) Then It Increments By The NUM_THREADS We Have To Allow It To Jump Across To The Next Thread It Is Delegated, Ensuring Multiple Threads Don't Access The Same Particle (Which Could Lead To Double-Updates Which Could Lead To Crashes Or Unintended Behavior). Each Particle Will Reflect Off Window Borders By Inverting Its Velocity, And If Colliding With A Particle Will Cause The Binding Impulsive Force On These Two Particles; This Force Is Light To Allow Bonds To Be Broken And To Ensure Particles Don't Snap Together And Is More A Gradual Attraction Towards Each Other.
+Each Thread Does The Motion & Collision Detection For Particles It Is Delegated. This Delegation Is Done By Providing Each Thread With A Start Position In The SoA Starting At Index 0 And Going Up Based On Its Provided `thread_id` (Simply What Thread Was Initialized First, Second, Etc. [i.e., first thread initialized is 0, second is 1]) Then It Increments By The `NUM_THREADS` We Have To Allow It To Jump Across To The Next Thread It Is Delegated, Ensuring Multiple Threads Don't Access The Same Particle (Which Could Lead To Double-Updates Which Could Lead To Crashes Or Unintended Behavior). Each Particle Will Reflect Off Window Borders By Inverting Its Velocity, And If Colliding With A Particle Will Cause The Binding Impulsive Force On These Two Particles; This Force Is Light To Allow Bonds To Be Broken And To Ensure Particles Don't Snap Together And Is More A Gradual Attraction Towards Each Other.
 
     C++
-    void `ParticleWindow`::updateParticlesThreaded(int thread_id) {
+    void ParticleWindow::updateParticlesThreaded(int thread_id) {
         while (!terminateThreads) {
               updateBarrier.arrive_and_wait();
   
@@ -131,10 +131,10 @@ Each Thread Does The Motion & Collision Detection For Particles It Is Delegated.
     }
 
 <h4>Main Loop</h4>
-We Then Start On The `ParticleWindow`'s run Function In The Main Thread Which Is The Main Rendering Loop. This Is A Simple Rendering Loop With A Target Frame Rate To Reach And Simple Buffer Clearing And Swapping. Other Than This, We Have The addParticle Function Which For Each Frame And Each Particle Will Emplace Them In The collisionMatrix (Our HashMap). We Will Then Arrive At Our updateBarrier Which Will Tell Our Worker Threads To Do Their Collision And Motion Logic As We Wait At The renderBarrier Which Will Push Us Forward After Each Worker Has Finalized Their Collision And Motion Logic For Us To Then Render The Results In renderParticles. We Then Clear Our HashMap For The Next Frame As We Will Have To Again Load Our Particles Into The HashMap Using Their New Positions After This Frame.
+We Then Start On The `ParticleWindow`'s `run(...)` Function In The Main Thread Which Is The Main Rendering Loop. This Is A Simple Rendering Loop With A Target Frame Rate To Reach And Simple Buffer Clearing And Swapping. Other Than This, We Have The `addParticle(...)` Function Which For Each Frame And Each Particle Will Emplace Them In The `collisionMatrix` (Our HashMap). We Will Then Arrive At Our `updateBarrier` Which Will Tell Our Worker Threads To Do Their Collision And Motion Logic As We Wait At The `renderBarrier` Which Will Push Us Forward After Each Worker Has Finalized Their Collision And Motion Logic For Us To Then Render The Results In `renderParticles(...)`. We Then Clear Our HashMap For The Next Frame As We Will Have To Again Load Our Particles Into The HashMap Using Their New Positions After This Frame.
 
     C++
-    void `ParticleWindow`::run() {
+    void ParticleWindow::run() {
         const float targetFrameDuration = 1.0f / 60.0f;
 
     while (!glfwWindowShouldClose(window)) {
@@ -170,10 +170,10 @@ We Then Start On The `ParticleWindow`'s run Function In The Main Thread Which Is
 
 
 <h4>Mouse Interaction</h4>
-This Is The Main Loop Of Our Simulation; We Also Include A mouseButtonCallbackWrapper Which Will Call Our mouseButtonCallback Which Will Check What Type Of Click We Have Done On The Screen And Apply The Provided Repulsive Force To All Particles In That Radius In applyRepulsiveForce.
+This Is The Main Loop Of Our Simulation; We Also Include A `mouseButtonCallbackWrapper(...)` Which Will Call Our `mouseButtonCallback(...)` Which Will Check What Type Of Click We Have Done On The Screen And Apply The Provided Repulsive Force To All Particles In That Radius In `applyRepulsiveForce(...)`.
 
     C++
-    void `ParticleWindow`::mouseButtonCallback(int button, int action) {
+    void ParticleWindow::mouseButtonCallback(int button, int action) {
         if (action == GLFW_PRESS) {
             double xpos, ypos;
             glfwGetCursorPos(window, &xpos, &ypos);
