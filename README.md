@@ -169,7 +169,7 @@ We Then Start On The ParticleWindow's run Function In The Main Thread Which Is T
     }
 
 
-Mouse Interaction
+<h4>Mouse Interaction</h4>
 This Is The Main Loop Of Our Simulation; We Also Include A mouseButtonCallbackWrapper Which Will Call Our mouseButtonCallback Which Will Check What Type Of Click We Have Done On The Screen And Apply The Provided Repulsive Force To All Particles In That Radius In applyRepulsiveForce.
 
     C++
