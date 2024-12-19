@@ -427,8 +427,8 @@ void ParticleWindow::applyRepulsiveForce()
     }
     else
     {
-        const float forceStrength = 0.000095f;
-        const float minDistanceSquared = 0.00001f;
+        const float forceStrength = 0.0000295f;
+        const float minDistanceSquared = 0.0001f;
         for (size_t i = 0; i < PARTICLE_COUNT; ++i) {
             glm::vec2 direction = particles.centroids[i] - clickPosition;
             float distanceSquared = glm::dot(direction, direction);
