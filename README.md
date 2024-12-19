@@ -13,7 +13,7 @@ You Can Also Click To Create A Force-Pulse Which Is Basically A Circular Region 
 
 <img src="https://github.com/user-attachments/assets/4d236ec7-91a8-4128-851b-db5c476a7086" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/4d236ec7-91a8-4128-851b-db5c476a7086" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/4d236ec7-91a8-4128-851b-db5c476a7086" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/4d236ec7-91a8-4128-851b-db5c476a7086" alt="Cornstarch <3" width="55" height="49"> 
 
-<h3>**The Breakdown:**</h3>
+<h3>The Breakdown:</h3>
 
 The Program Starts By Initializing A Window Based Upon The Custom `ParticleWindow` Class. This Class Works As Means Of Encapsulating All Data Pertaining To The Simulation Including A GLFW Window, The Shader For This Provided Window, As Well As Data Pertaining To Rendering And The Current Particles Being Simulated.
 
@@ -235,7 +235,7 @@ At The Start Of The Code There Is A Section With A Lot Of Definitions For Precom
 
 <img src="https://github.com/user-attachments/assets/69234949-e52b-4056-9b5b-382fa1f28745" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/69234949-e52b-4056-9b5b-382fa1f28745" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/69234949-e52b-4056-9b5b-382fa1f28745" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/69234949-e52b-4056-9b5b-382fa1f28745" alt="Cornstarch <3" width="55" height="49"> 
 
-<h3>**Features:**</h3>
+<h3>Features:</h3>
 
 ![Untitledvideo2-ezgif com-optimize (1)](https://github.com/user-attachments/assets/6786c8a5-fc40-4971-a572-abb5c573d51d)
 
