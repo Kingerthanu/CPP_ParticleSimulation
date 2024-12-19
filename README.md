@@ -238,15 +238,10 @@ At The Start Of The Code There Is A Section With A Lot Of Definitions For Precom
 <h3>**Features:**</h3>
 
 Generated Benchmark Charts From Python Script Using Collected Data:
-![algorithm_comparison](https://github.com/user-attachments/assets/d6297d24-06dd-43b3-ba97-4cccfdc59476)
 
-![knapsack_algorithm_comparison_split](https://github.com/user-attachments/assets/28fefa31-6856-4a5e-b491-dc36a61b6550)
+![Untitledvideo5-ezgif com-optimize](https://github.com/user-attachments/assets/8bf7c276-1cbb-4507-a59f-dfb677b61965)
 
-![low_n_comparison](https://github.com/user-attachments/assets/379f939f-4d5b-4bee-b062-bd0090fdff19)
-
-![runtime_analysis_heuristic](https://github.com/user-attachments/assets/840c5d62-99a5-4075-a423-1fea90fbbf82)
-
-![runtime_analysis](https://github.com/user-attachments/assets/2973feea-065f-4349-8feb-7fcd90b3d456)
+![Untitledvideo-ezgif com-optimize (5)](https://github.com/user-attachments/assets/4e6584bf-a3bd-46b4-b97d-a0b40485d76d)
 
 
 <img src="https://github.com/user-attachments/assets/0363619c-11fb-472f-b338-39b361304dd5" alt="Cornstarch <3" width="55" height="69"> <img src="https://github.com/user-attachments/assets/0363619c-11fb-472f-b338-39b361304dd5" alt="Cornstarch <3" width="55" height="69"> <img src="https://github.com/user-attachments/assets/0363619c-11fb-472f-b338-39b361304dd5" alt="Cornstarch <3" width="55" height="69"> <img src="https://github.com/user-attachments/assets/0363619c-11fb-472f-b338-39b361304dd5" alt="Cornstarch <3" width="55" height="69">
