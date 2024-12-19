@@ -21,6 +21,23 @@
 #define GRID_SIZE_Y static_cast<int>(2.0f / BIN_SIZE)
 
 
+#define RADIUS_MIN 0.0045f
+#define RADIUS_MAX 0.025f
+#define POSITION_MIN -0.799f
+#define POSITION_MAX 0.799f
+#define VELOCITY_MIN - 0.00015f
+#define VELOCITY_MAX 0.00015f
+
+#define COLOR_R_MIN 0.1f
+#define COLOR_R_MAX 0.6f
+
+#define COLOR_G_MIN 0.1f
+#define COLOR_G_MAX 0.5f
+
+#define COLOR_B_MIN 0.1f
+#define COLOR_B_MAX 1.0f
+
+
 
 // Struct To Represent Hash Coordinates In The Spatial Grid
 struct HashCoord
@@ -316,16 +333,18 @@ void ParticleWindow::initParticles(std::vector<GLuint>& indices)
 {
     std::random_device rd;
     std::mt19937 seed(rd());
-    std::uniform_real_distribution<float> radiusDist(0.005f, 0.025f);
-    std::uniform_real_distribution<float> positionDist(-0.799f, 0.799f);
-    std::uniform_real_distribution<float> colorDist(0.1f, 1.0f);
-    std::uniform_real_distribution<float> velocityDist(-0.00015f, 0.00015f);
+    std::uniform_real_distribution<float> radiusDist(RADIUS_MIN, RADIUS_MAX);
+    std::uniform_real_distribution<float> positionDist(POSITION_MIN, POSITION_MAX);
+    std::uniform_real_distribution<float> colorDistR(COLOR_R_MIN, COLOR_R_MAX);
+    std::uniform_real_distribution<float> colorDistG(COLOR_G_MIN, COLOR_G_MAX);
+    std::uniform_real_distribution<float> colorDistB(COLOR_B_MIN, COLOR_B_MAX);
+    std::uniform_real_distribution<float> velocityDist(VELOCITY_MIN, VELOCITY_MAX);
 
     for (unsigned int i = 0, centerOffset; i < PARTICLE_COUNT; i++)
     {
         particles.centroids[i] = glm::vec2(positionDist(seed), positionDist(seed));
         particles.radii[i] = radiusDist(seed);
-        particles.colors[i] = glm::vec3(colorDist(seed), colorDist(seed), colorDist(seed));
+        particles.colors[i] = glm::vec3(colorDistR(seed), colorDistG(seed), colorDistB(seed));
         particles.velocities[i] = glm::vec2(velocityDist(seed), velocityDist(seed)) / particles.radii[i];
         particles.IDs[i] = vertices.size();
 
@@ -409,7 +428,7 @@ void ParticleWindow::applyRepulsiveForce()
     else
     {
         const float forceStrength = 0.000095f;
-        const float minDistanceSquared = 0.000000001f;
+        const float minDistanceSquared = 0.00001f;
         for (size_t i = 0; i < PARTICLE_COUNT; ++i) {
             glm::vec2 direction = particles.centroids[i] - clickPosition;
             float distanceSquared = glm::dot(direction, direction);
