@@ -412,8 +412,8 @@ void ParticleWindow::applyRepulsiveForce()
 {
     if (isClick)
     {
-        const float forceStrength = 0.000095f;
-        const float minDistanceSquared = 0.000000001f;
+        const float forceStrength = 0.000015f;
+        const float minDistanceSquared = 0.0000001f;
         for (size_t i = 0; i < PARTICLE_COUNT; ++i)
         {
             glm::vec2 direction = clickPosition - particles.centroids[i];
@@ -427,7 +427,7 @@ void ParticleWindow::applyRepulsiveForce()
     }
     else
     {
-        const float forceStrength = 0.0000295f;
+        const float forceStrength = 0.00001995f;
         const float minDistanceSquared = 0.0001f;
         for (size_t i = 0; i < PARTICLE_COUNT; ++i) {
             glm::vec2 direction = particles.centroids[i] - clickPosition;
@@ -452,8 +452,7 @@ void ParticleWindow::applyRepulsiveForce()
 //   1.) Velocities Are Updated For Colliding Particles
 //   2.) Binding Impulse Forces Are Applied Between Colliding Particles
 //   3.) Particle Momentum Is Conserved In Collisions
-void ParticleWindow::resolveRadialCollision(size_t i, const std::vector<size_t>& potentialColliders) 
-{
+void ParticleWindow::resolveRadialCollision(size_t i, const std::vector<size_t>& potentialColliders) {
     for (auto otherIndex : potentialColliders) {
         if (i != otherIndex) {
             glm::vec2 diff = particles.centroids[otherIndex] - particles.centroids[i];
@@ -467,14 +466,26 @@ void ParticleWindow::resolveRadialCollision(size_t i, const std::vector<size_t>&
 
                 if (velocityAlongNormal > 0) continue;
 
-                float impulseScalar = -(0.021f * velocityAlongNormal);
+                float sizeFactor = exp(0.0001f / (particles.radii[i] * particles.radii[otherIndex]));
+
+                float impulseScalar = -(0.005f * velocityAlongNormal * sizeFactor);
                 glm::vec2 impulse = impulseScalar * normal;
-                particles.velocities[i] += impulse;
-                particles.velocities[otherIndex] -= impulse;
+
+                // Apply stronger impulse to larger particle
+                if (particles.radii[i] < particles.radii[otherIndex]) {
+                    particles.velocities[i] += impulse * 0.5f;
+                    particles.velocities[otherIndex] -= impulse * 1.5f;
+                }
+                else {
+                    particles.velocities[i] += impulse * 1.5f;
+                    particles.velocities[otherIndex] -= impulse * 0.5f;
+                }
             }
         }
     }
 }
+
+
 
 
 // Function For Threaded Particle Updates
