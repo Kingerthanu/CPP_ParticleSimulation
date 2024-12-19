@@ -99,8 +99,8 @@ class ParticleData
 {
 
     public:
-        alignas(32) std::vector<glm::vec2> velocities;
-        alignas(32) std::vector<glm::vec2> centroids;
+        std::vector<glm::vec2> velocities;
+        std::vector<glm::vec2> centroids;
         std::vector<float> radii;
         std::vector<glm::vec3> colors;
         std::vector<unsigned short int> IDs;
