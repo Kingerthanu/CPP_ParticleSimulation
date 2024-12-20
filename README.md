@@ -40,6 +40,7 @@ _**Key Differences From Patch 1:**_
   * Building On Patch 1’s Multithreading, Patch 2 Increases The Number Of Worker Threads (E.G., From 2 To 3) And Coordinates Them More Carefully. With Improved Synchronization Primitives, We Can Achieve Smooth Real-Time Performance Despite A Higher Particle Count And More Complex Collision Logic. The `ThreadSynchronizer` Class Continues To Manage Thread Barriers, Ensuring Consistent Frame-By-Frame Updates Without Data Races Or Visual Artifacts. The `updateBarrier` And `renderBarrier` Synchronize Threads To Maintain Proper Frame Timing, While Each Thread Calls The `updateParticlesThreaded(...)` Function To Update Its Assigned Partition.
 
 _**Runtime Complexity & Hashing:**_ 
+
 As With Patch 1, The Collision Detection Pipeline Uses Spatial Hashing To Keep Complexity Near O(N). By Assigning Each Particle To A Grid Cell Using The `collisionMatrix.addParticle(...)` Function And Only Checking For Collisions Among Neighbors Via `collisionMatrix.getPotentialColliders(...)`, We Avoid O(N²) Complexity. Patch 2 Further Refines These Operations, Balancing Cell Sizes, Threading Divisions, And Update Phases. This Ensures That Even As The Particle Count Scales, The Simulation Remains Performant.
 
 **Technical Highlights:**
