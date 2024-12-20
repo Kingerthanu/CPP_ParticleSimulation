@@ -1,7 +1,7 @@
 # CPP_ParticleSimulation
 This Project Works With OpenGL To Create A Visual Real-Time Particle Simulation With Their Own Collision Detection To Help See How We Can Optimize Means Of Collision Detection Going From A Brute-Force Runtime Complexity For The Collision Algorithm Of O(n!) To A O(n) Complexity By Utilizing Radial Sweeps/Checks On Neighboring Particles Which Are Apportioned Into HashMap Cells Using A Custom Hash Mapping Algorithm To Allow For O(1) Insertions/Removals.
 
-While Currently Not At Its Final Stable Build, It Is Still Very Functional And Has Been Showing Smooth 60fps Even With 100s Of Particles Concurrently Being Simulated And Collided. Currently Working On This Project As Means Of Learning About Realistic Implementations For Algorithmic Complexity Analysis And How Values Of n Can Heavily Bias Runtime Efficiency. While I've Been Comfortable And Knowledgable About Varying Means Of Solving Problems Optimally, This Project And My Courses Have Helped Me Understand How To Think More Theoretically Instead Of More Pragmatically About Problems; Allowing Me To Reason Through Means Of Using HashMaps And Other Standardized Data Structures For Optimal And Practical Applications Mainly In The Sector Of Simulations. 
+While Currently Not At Its Final Stable Build, It Is Still Very Functional And Has Been Showing Smooth 90fps Even With 1000s Of Particles Concurrently Being Simulated And Collided. Currently Working On This Project As Means Of Learning About Realistic Implementations For Algorithmic Complexity Analysis And How Values Of n Can Heavily Bias Runtime Efficiency. While I've Been Comfortable And Knowledgable About Varying Means Of Solving Problems Optimally, This Project And My Courses Have Helped Me Understand How To Think More Theoretically Instead Of More Pragmatically About Problems; Allowing Me To Reason Through Means Of Using HashMaps And Other Standardized Data Structures For Optimal And Practical Applications Mainly In The Sector Of Simulations. 
 
 Interesting Lessons Have Been Learned In This Project With Multithreading Contention And Means Of Cleanly Partitioning Regions To Allow For Non-Conflicting--And In Turn Non-Synchronizing Regions--To Be Employed For Intuitive And Scalable Solutions.
 
@@ -13,246 +13,37 @@ You Can Also Click To Create A Force-Pulse Which Is Basically A Circular Region 
 
 <img src="https://github.com/user-attachments/assets/4d236ec7-91a8-4128-851b-db5c476a7086" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/4d236ec7-91a8-4128-851b-db5c476a7086" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/4d236ec7-91a8-4128-851b-db5c476a7086" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/4d236ec7-91a8-4128-851b-db5c476a7086" alt="Cornstarch <3" width="55" height="49"> 
 
-<h3>Key Updates in Patch-2:</h3>
-
-* Increased Resolution: The simulation window size has been increased to 1900x1900 for better visualization.
-* Increased Particle Count: The particle count has been increased to 5000 to test performance with more particles.
-* Enhanced Multithreading: Improved performance by increasing the number of threads from 2 to 3.
-* Collision Detection Improvements:
-    - Added CollisionPair struct for better collision tracking.
-    - Improved wall collision handling and resolution logic.
-    - Implemented continuous force application when the mouse button is held.
-* Gravity Forces: Added gravity forces to influence particle movement.
-* Trajectory-Based Collision Detection: Implemented a more sophisticated collision detection algorithm based on particle trajectories.
-* Overall Collision Overhaul: Enhanced the collision detection and resolution mechanisms for better performance and accuracy.
-
-
-
 <h3>The Breakdown:</h3>
 
-The Program Starts By Initializing A Window Based Upon The Custom `ParticleWindow` Class. This Class Works As Means Of Encapsulating All Data Pertaining To The Simulation Including A GLFW Window, The Shader For This Provided Window, As Well As Data Pertaining To Rendering And The Current Particles Being Simulated.
+In This Second Patch, We've Significantly Evolved Our Real-Time Particle Simulation From A Simple Bonding/Attraction Model Into A More Physically Dynamic Scenario Where Particles Repel And Push Away From One Another, Thus More Closely Approximating Non-Rigid-Body Collisions. This Patch Focuses Heavily On Improving The Sense Of Physical Realism: Rather Than Particles "Clumping" And Forming Primitive Bonds As In Patch 1, They Now Behave As If Under Gravitational Influence And Collision Impulses, Dispersing And Scattering Upon Contact.
 
-<h4>Initialization</h4>
+We Continue To Utilize OpenGL For Rendering And Have Refined Our Internal Data Structures, Spatial Hashing, And Threading Model. While The General Architecture Remains Similar, Numerous Enhancements Have Been Integrated To Boost Performance, Accuracy, And Scalability.
 
-When The Process Initializes The Class, It Starts By Contextualizing The Window For OpenGL Buffer Contexting As Well As Generating Our Particles Through `initParticles(...)`. The Window Size Has Been Increased To 1900x1900 For Better Visualization, And The Particle Count Has Been Increased To 5000 To Test Performance With More Particles.
- 
-```C++
-ParticleWindow::ParticleWindow(int width, int height)
-    : particles(PARTICLE_COUNT), collisionMatrix(BIN_SIZE), updateBarrier(NUM_THREADS + 1), renderBarrier(NUM_THREADS + 1)
-{
-    if (!glfwInit())
-    {
-        throw std::runtime_error("Failed to initialize GLFW");
-    }
+_**Key Differences From Patch 1:**_
 
-    window = glfwCreateWindow(width, height, "Particle Simulation", NULL, NULL);
-    if (!window)
-    {
-        glfwTerminate();
-        throw std::runtime_error("Failed to create GLFW window");
-    }
+* **Collision Dynamics:** Patch 1’s Particles Adhered Together Upon Collision, Resulting In A Visual "Bonding." In Patch 2, We Now Implement Collision Responses That Push Particles Apart, Simulating Non-Rigid Impacts More Akin To Realistic Elastic Collisions. This Removes The "Sticky" Interactions And Allows Particles To Scatter And Spread. This Collision Response Is Handled Using The `resolveCollision(...)` Function, Which Updates The Velocities Of Colliding Particles To Simulate A Physically Accurate Separation.
 
-    glfwMakeContextCurrent(window);
-    gladLoadGL();
-    glfwSetWindowUserPointer(window, this);
-    glfwSetMouseButtonCallback(window, mouseButtonCallbackWrapper);
-    shaderEngine = Shader("default.vert", "default.frag");
-    shaderEngine.Activate();
-    std::vector<GLuint> indices;
-    initParticles(indices);
-    glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_DYNAMIC_DRAW);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
-    indiceCount = indices.size();
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(2 * sizeof(float)));
-    glEnableVertexAttribArray(1);
+* **Gravitational Simulation & Continuous Forces:** A Mild Gravitational Pull Is Introduced, Continuously Nudging Particles Downward (Negative Y-Direction), And Frictional Damping Has Also Been Applied To Gradually Reduce Velocity Over Time. These Forces, Combined With Repulsive Collisions, Produce More Visually Rich And Physically Intuitive Behavior. Gravity Is Simulated Through A Constant Update To The `particles.velocities` Array In The `updateParticlesThreaded(...)` Function, While Frictional Damping Is Applied By Scaling The Velocities To Simulate Energy Loss.
 
-    for (int i = 0; i < NUM_THREADS; ++i)
-    {
-        threads.emplace_back(&ParticleWindow::updateParticlesThreaded, this, i);
-    }
-}
-```
-    
-<h4>Particle Generation</h4>
+* **Performance & Scalability Enhancements:** Patch 2 Supports Thousands Of Particles (E.G., 5000) While Maintaining Stable Framerates. This Scalability Is Achieved Via Efficient Spatial Partitioning Through The `collisionMatrix` Object And Multi-Threading. The Core Principles From Patch 1—Using Spatial Hashing To Reduce Brute-Force Collision Complexity—Still Hold, But We Have Tuned Parameters (Like `BIN_SIZE` And `NUM_THREADS`) And Refined Our Data Management To Further Increase Efficiency. Threads Are Launched Using The Loop In `ParticleWindow`'s Constructor, And Each Thread Calls The `updateParticlesThreaded(...)` Function To Handle A Partition Of Particles.
 
-In `initParticles(...)` We Utilize Random Generation To Get Varying Particles From Their Color, Initial Position, Initial Velocity, As Well As Their Radial Size. For This Current Project, Instead Of Utilizing An Array-Of-Structs (AoS [Array Of Particle Instances]) We Utilize A Struct-Of-Arrays (SoA [Instance Of Particle Traits Arrays]) To Decrease Cache Thrashing And Increase Locality Of Shared Data. This Ensures Data Like Positions Are All Accessed And Checked Together In The Cache, Which Is Better Than Having Multiple Particles And All Their Data Being In The Cache One-At-A-Time. This Is A Trade-Off As While More Efficient, It Is A Little Less Readable And Intuitive As Individual Particles Are Represented Through Indexes Instead Of Class Instances. After Each Particle Has Its Backend Members Initialized (Centroid, Radii, Color, Velocity, ID), We Start Building The Circles' Visual Elements Through A Circle Algorithm Which Generates All Vertices For The VBO (Vertex Array Buffer) And Indices For The EBO (Element Array Buffer). These Two Entries Allow OpenGL To Properly Render Our Particles.
+* **Mouse Interactions With Refined Force Applications:** Similar To Patch 1, Clicking Applies Forces To Particles. However, The Force Model Is Updated: Left-Clicking Repels Particles And Right-Clicking Pulls Them Closer. In Patch 2, These Forces Are More Continuous And Subtle, Allowing For Smoother And More Granular Control Over Particle Dispersal Patterns. Keeping The Mouse Held Down Continuously Applies A Gentle, Ongoing Force, Enhancing User Interactivity And Making The System Feel More Dynamic And "Fluid." The Force Application Logic Is Handled By The `applyRepulsiveForce(...)` And `applyRepulsiveForceContinual(...)` Functions, Which Adjust The `particles.velocities` Array To Move Particles Based On The Mouse Position.
 
-```C++
-void ParticleWindow::initParticles(std::vector<GLuint>& indices)
-{
-    std::random_device rd;
-    std::mt19937 seed(rd());
-    std::uniform_real_distribution<float> radiusDist(0.005f, 0.01f);
-    std::uniform_real_distribution<float> positionDist(-0.799f, 0.799f);
-    std::uniform_real_distribution<float> colorDist(0.3f, 1.0f);
-    std::uniform_real_distribution<float> colorDist2(0.0f, 0.2f);
-    std::uniform_real_distribution<float> velocityDist(-0.00015f, 0.00015f);
+* **Overhauled Particle Initialization:** Particle Generation Now Uses Different Distributions For Radii, Positions, And Colors, Producing Visually Distinct Scenarios And Providing A More Diverse Particle Set. The Code Also Includes Subtle Runtime Dampening And Restitution Factors To Ensure Stable Long-Term Behavior. This Initialization Is Handled In The `initParticles(...)` Function, Where Each Particle's Attributes (Like `particles.radii`, `particles.colors`, `particles.velocities`, Etc.) Are Randomized Using Distributions To Achieve Diversity And Dynamic Interactions.
 
-    for (unsigned int i = 0, centerOffset; i < PARTICLE_COUNT; i++)
-    {
-        particles.centroids[i] = glm::vec2(positionDist(seed), positionDist(seed));
-        particles.radii[i] = radiusDist(seed);
-        particles.colors[i] = glm::vec3(colorDist2(seed), colorDist2(seed), colorDist(seed));
-        particles.velocities[i] = glm::vec2(velocityDist(seed), velocityDist(seed)) / particles.radii[i];
-        particles.IDs[i] = vertices.size();
+* **Threading & Synchronization:** Building On Patch 1’s Multithreading, Patch 2 Increases The Number Of Worker Threads (E.G., From 2 To 3) And Coordinates Them More Carefully. With Improved Synchronization Primitives, We Can Achieve Smooth Real-Time Performance Despite A Higher Particle Count And More Complex Collision Logic. The `ThreadSynchronizer` Class Continues To Manage Thread Barriers, Ensuring Consistent Frame-By-Frame Updates Without Data Races Or Visual Artifacts. The `updateBarrier` And `renderBarrier` Synchronize Threads To Maintain Proper Frame Timing, While Each Thread Calls The `updateParticlesThreaded(...)` Function To Update Its Assigned Partition.
 
-        vertices.push_back({ particles.centroids[i], particles.colors[i] });
-        for (int j = 0; j < SEGMENT_CNT; ++j)
-        {
-            float angle = (2.0f * M_PI * j) / SEGMENT_CNT;
-            glm::vec2 pos = particles.centroids[i] + particles.radii[i] * glm::vec2(cos(angle), sin(angle));
-            vertices.push_back({ pos, particles.colors[i] });
-        }
+_**Runtime Complexity & Hashing:**_ As With Patch 1, The Collision Detection Pipeline Uses Spatial Hashing To Keep Complexity Near O(N). By Assigning Each Particle To A Grid Cell Using The `collisionMatrix.addParticle(...)` Function And Only Checking For Collisions Among Neighbors Via `collisionMatrix.getPotentialColliders(...)`, We Avoid O(N²) Complexity. Patch 2 Further Refines These Operations, Balancing Cell Sizes, Threading Divisions, And Update Phases. This Ensures That Even As The Particle Count Scales, The Simulation Remains Performant.
 
-        centerOffset = vertices.size() - SEGMENT_CNT - 1;
-        for (unsigned int j = 0; j < SEGMENT_CNT - 1; ++j)
-        {
-            indices.push_back(centerOffset);
-            indices.push_back(centerOffset + j + 1);
-            indices.push_back(centerOffset + j + 2);
-        }
-        indices.push_back(centerOffset);
-        indices.push_back(centerOffset + SEGMENT_CNT);
-        indices.push_back(centerOffset + 1);
-    }
-}
-```
-<h4>Threading</h4>
+**Technical Highlights:**
 
-After Generation Is Done In `initParticles(...)` We Then Create Threads Which Allows Us To Partition The Workload For Collision Detection To Multiple "Workers" To Allow Us To Gain Runtime Benefits As Instead Of One Thread Sequentially Updating All Particles Itself It Divides The Workload To Multiple Threads (Two Threads Currently As From Testing It Seemed Two Allowed Runtime Benefits Without Diminishing Returns From Context Swapping). These Threads Are Synchronized With The Main Window Thread Through The `updateBarrier` & `renderBarrier` Barriers To Ensure Workers Render For Each Frame And Don't Run Ahead Frames Which Could Cause Artifacts In Our Simulation.
+* **Spatial Partitioning With Fixed-Grid Hashing:** Each Frame, Particles Are Reinserted Into A Hash-Based Grid Structure Using The `collisionMatrix.addParticle(...)` Function. Collisions Are Detected By Querying Neighboring Cells Using The `collisionMatrix.getPotentialColliders(...)` Function, Ensuring Efficient O(1)-Like Lookups And Minimal Overhead When Scaling Up To Thousands Of Particles.
 
-```C++
-for (int i = 0; i < NUM_THREADS; ++i)
-{
-    threads.emplace_back(&ParticleWindow::updateParticlesThreaded, this, i);
-}
-```
-Each Thread Does The Motion & Collision Detection For Particles It Is Delegated. This Delegation Is Done By Providing Each Thread With A Start Position In The SoA Starting At Index 0 And Going Up Based On Its Provided `thread_id` (Simply What Thread Was Initialized First, Second, Etc. [i.e., first thread initialized is 0, second is 1]) Then It Increments By The `NUM_THREADS` We Have To Allow It To Jump Across To The Next Thread It Is Delegated, Ensuring Multiple Threads Don't Access The Same Particle (Which Could Lead To Double-Updates Which Could Lead To Crashes Or Unintended Behavior). Each Particle Will Reflect Off Window Borders By Inverting Its Velocity, And If Colliding With A Particle Will Cause The Binding Impulsive Force On These Two Particles; This Force Is Light To Allow Bonds To Be Broken And To Ensure Particles Don't Snap Together And Is More A Gradual Attraction Towards Each Other. The Number Of Threads Has Been Increased To 3 To Better Distribute The Workload.
+* **Elastic Collisions & Restitution:** Collision Resolution Now Uses Physical Principles Of Restitution And Force Multipliers, Ensuring That Particles Bounce Off Each Other Rather Than Sticking. This Process Is Implemented In The `resolveCollision(...)` Function, Which Computes The Impulse Response Between Two Colliding Particles And Updates Their Velocities Using Their Masses And Current Velocities.
 
-```C++
-void ParticleWindow::updateParticlesThreaded(int thread_id)
-{
-    while (!terminateThreads)
-    {
-      updateBarrier.arrive_and_wait();
+* **Gravity & Frictional Dampening:** A Constant Downward Force Simulates Gravity, Causing Particles To Settle Over Time, While Friction-Like Velocity Reductions Prevent Runaway Accelerations And Maintain Long-Term Stability. Gravity Is Updated In The `updateParticlesThreaded(...)` Function By Applying A Constant Velocity Decrease, While Friction Is Simulated By Multiplying The Velocities By A Decay Factor.
 
-      // Process Particles Assigned To This Thread
-      for (size_t i = thread_id; i < PARTICLE_COUNT; i += NUM_THREADS)
-      {
-          particles.centroids[i].x += particles.velocities[i].x;
-          particles.centroids[i].y += particles.velocities[i].y;
-
-          // Reflect Velocity At Boundaries
-          if (particles.centroids[i].x - particles.radii[i] < -1.0f || particles.centroids[i].x + particles.radii[i] > 1.0f)
-          {
-              particles.velocities[i].x = -particles.velocities[i].x;
-          }
-
-          if (particles.centroids[i].y - particles.radii[i] < -1.0f || particles.centroids[i].y + particles.radii[i] > 1.0f)
-          {
-              particles.velocities[i].y = -particles.velocities[i].y;
-          }
-
-          // Update VBO
-          vertices[particles.IDs[i]].position = particles.centroids[i];
-          for (int j = 0; j < SEGMENT_CNT; ++j)
-          {
-              float angle = (2.0f * M_PI * j) / SEGMENT_CNT;
-              glm::vec2 pos = particles.centroids[i] + particles.radii[i] * glm::vec2(cos(angle), sin(angle));
-              vertices[particles.IDs[i] + j + 1].position = pos;
-          }
-      }
-
-      renderBarrier.arrive_and_wait();
-    }
-}
-```
-
-<h4>Main Loop</h4>
-
-We Then Start On The `ParticleWindow`'s `run(...)` Function In The Main Thread Which Is The Main Rendering Loop. This Is A Simple Rendering Loop With A Target Frame Rate To Reach And Simple Buffer Clearing And Swapping. Other Than This, We Have The `addParticle(...)` Function Which For Each Frame And Each Particle Will Emplace Them In The `collisionMatrix` (Our HashMap). We Will Then Arrive At Our `updateBarrier` Which Will Tell Our Worker Threads To Do Their Collision And Motion Logic As We Wait At The `renderBarrier` Which Will Push Us Forward After Each Worker Has Finalized Their Collision And Motion Logic For Us To Then Render The Results In `renderParticles(...)`. We Then Clear Our HashMap For The Next Frame As We Will Have To Again Load Our Particles Into The HashMap Using Their New Positions After This Frame.
-
-```C++
-void ParticleWindow::run()
-{
-    const float targetFrameDuration = 1.0f / 60.0f;
-
-    while (!glfwWindowShouldClose(window))
-    {
-        auto frameStart = std::chrono::high_resolution_clock::now();
-    
-        glClear(GL_COLOR_BUFFER_BIT);
-    
-        for (size_t i = 0; i < PARTICLE_COUNT; i++)
-        {
-            collisionMatrix.addParticle(i, particles.centroids[i]);
-        }
-    
-        updateBarrier.arrive_and_wait();
-        renderBarrier.arrive_and_wait();
-    
-        renderParticles();
-    
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    
-        collisionMatrix.clear();
-    
-        auto frameEnd = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<float> frameTime = frameEnd - frameStart;
-    
-        float sleepDuration = targetFrameDuration - frameTime.count();
-        if (sleepDuration > 0)
-        {
-            std::this_thread::sleep_for(std::chrono::duration<float>(sleepDuration));
-        }
-    }
-
-    glfwTerminate();
-}
-```
-
-<h4>Mouse Interaction</h4>
-
-This Is The Main Loop Of Our Simulation; We Also Include A `mouseButtonCallbackWrapper(...)` Which Will Call Our `mouseButtonCallback(...)` Which Will Check What Type Of Click We Have Done On The Screen And Apply The Provided Repulsive Force To All Particles In That Radius In `applyRepulsiveForce(...)`.
-
-```C++
-void ParticleWindow::mouseButtonCallback(int button, int action)
-{
-    if (action == GLFW_PRESS)
-    {
-        double xpos, ypos;
-        glfwGetCursorPos(window, &xpos, &ypos);
-        clickPosition = glm::vec2(2.0f * (xpos / WINDOW_WIDTH) - 1.0f, 1.0f - 2.0f * (ypos / WINDOW_HEIGHT));
-        isClick = button;
-        applyRepulsiveForce();
-    }
-}
-```
-
-<h4>Configurations</h4>
-
-At The Start Of The Code There Is A Section With A Lot Of Definitions For Precompilation, Some Of These Relate To The Amount Of Particles To Generate And Their Traits (Like Segment Count; `SEGMENT_CNT`, `PARTICLE_COUNT`), While Some Relate To The Means Of Hashing Our Given Screenspace (`BIN_SIZE`, `GRID_SIZE_X`, `GRID_SIZE_Y`), Others Also Being `WINDOW_HEIGHT` & `WINDOW_WIDTH` For The GLSL Window, And `M_PI` Being A Value For Pi For Trigonometry Computations And `NUM_THREADS` Being For Amount Of Workers To Use For Simulation Logic.
-
-```C++
-#define WINDOW_HEIGHT 1300
-#define WINDOW_WIDTH 1300
-#define SEGMENT_CNT 7
-#define PARTICLE_COUNT 500
-#define M_PI 3.14159265359
-#define BIN_SIZE 0.025f
-#define NUM_THREADS 2
-#define GRID_SIZE_X static_cast<int>(2.0f / BIN_SIZE)
-#define GRID_SIZE_Y static_cast<int>(2.0f / BIN_SIZE)
-```
+* **Refined Rendering And Vertex Buffer Updates:** Just Like Patch 1, We Use A Struct-Of-Arrays (SoA) Design For Particle Data, Coupled With A Single Vertex Array And Parallel Rendering. Patch 2 Scales Up The Rendering Pipeline To Handle A Larger Particle Set Efficiently. Drawing Thousands Of Circles At 60-90 FPS Remains Smooth Due To Careful Memory Handling And Incremental Updates To OpenGL Buffers Using The `renderParticles(...)` Function, Which Uploads The `vertices` Array To The GPU Using OpenGL's `glBufferSubData(...)`.
 
 
 <img src="https://github.com/user-attachments/assets/0c481edf-693f-4b4b-bca2-f6017a3e15d4" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/0c481edf-693f-4b4b-bca2-f6017a3e15d4" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/0c481edf-693f-4b4b-bca2-f6017a3e15d4" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/0c481edf-693f-4b4b-bca2-f6017a3e15d4" alt="Cornstarch <3" width="55" height="49"> 
