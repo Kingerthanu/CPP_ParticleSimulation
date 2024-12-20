@@ -19,7 +19,7 @@ In This Second Patch, We've Significantly Evolved Our Real-Time Particle Simulat
 
 We Continue To Utilize OpenGL For Rendering And Have Refined Our Internal Data Structures, Spatial Hashing, And Threading Model. While The General Architecture Remains Similar, Numerous Enhancements Have Been Integrated To Boost Performance, Accuracy, And Scalability.
 
-_**Key Differences From Patch 1:**_
+<h4>Key Differences From Patch 1:</h4>
 
 * **Collision Dynamics:**
   * Patch 1’s Particles Adhered Together Upon Collision, Resulting In A Visual "Bonding." In Patch 2, We Now Implement Collision Responses That Push Particles Apart, Simulating Non-Rigid Impacts More Akin To Realistic Elastic Collisions. This Removes The "Sticky" Interactions And Allows Particles To Scatter And Spread. This Collision Response Is Handled Using The `resolveCollision(...)` Function, Which Updates The Velocities Of Colliding Particles To Simulate A Physically Accurate Separation.
@@ -39,7 +39,7 @@ _**Key Differences From Patch 1:**_
 * **Threading & Synchronization:**
   * Building On Patch 1’s Multithreading, Patch 2 Increases The Number Of Worker Threads (E.G., From 2 To 3) And Coordinates Them More Carefully. With Improved Synchronization Primitives, We Can Achieve Smooth Real-Time Performance Despite A Higher Particle Count And More Complex Collision Logic. The `ThreadSynchronizer` Class Continues To Manage Thread Barriers, Ensuring Consistent Frame-By-Frame Updates Without Data Races Or Visual Artifacts. The `updateBarrier` And `renderBarrier` Synchronize Threads To Maintain Proper Frame Timing, While Each Thread Calls The `updateParticlesThreaded(...)` Function To Update Its Assigned Partition.
 
-_**Runtime Complexity & Hashing:**_ 
+<h4>Runtime Complexity & Hashing:</h4>
 
 As With Patch 1, The Collision Detection Pipeline Uses Spatial Hashing To Keep Complexity Near O(N). By Assigning Each Particle To A Grid Cell Using The `collisionMatrix.addParticle(...)` Function And Only Checking For Collisions Among Neighbors Via `collisionMatrix.getPotentialColliders(...)`, We Avoid O(N²) Complexity. Patch 2 Further Refines These Operations, Balancing Cell Sizes, Threading Divisions, And Update Phases. This Ensures That Even As The Particle Count Scales, The Simulation Remains Performant.
 
