@@ -19,9 +19,9 @@ You Can Also Click To Create A Force-Pulse Which Is Basically A Circular Region 
     - Increased Particle Count: The particle count has been increased to 5000 to test performance with more particles.
     - Enhanced Multithreading: Improved performance by increasing the number of threads from 2 to 3.
     - Collision Detection Improvements:
-    - Added CollisionPair struct for better collision tracking.
-    - Improved wall collision handling and resolution logic.
-    - Implemented continuous force application when the mouse button is held.
+        - Added CollisionPair struct for better collision tracking.
+        - Improved wall collision handling and resolution logic.
+        - Implemented continuous force application when the mouse button is held.
     - Gravity Forces: Added gravity forces to influence particle movement.
     - Trajectory-Based Collision Detection: Implemented a more sophisticated collision detection algorithm based on particle trajectories.
     - Overall Collision Overhaul: Enhanced the collision detection and resolution mechanisms for better performance and accuracy.
