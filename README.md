@@ -13,14 +13,29 @@ You Can Also Click To Create A Force-Pulse Which Is Basically A Circular Region 
 
 <img src="https://github.com/user-attachments/assets/4d236ec7-91a8-4128-851b-db5c476a7086" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/4d236ec7-91a8-4128-851b-db5c476a7086" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/4d236ec7-91a8-4128-851b-db5c476a7086" alt="Cornstarch <3" width="55" height="49"> <img src="https://github.com/user-attachments/assets/4d236ec7-91a8-4128-851b-db5c476a7086" alt="Cornstarch <3" width="55" height="49"> 
 
+<h3>Key Updates in Patch-2:</h3>
+
+    - Increased Resolution: The simulation window size has been increased to 1900x1900 for better visualization.
+    - Increased Particle Count: The particle count has been increased to 5000 to test performance with more particles.
+    - Enhanced Multithreading: Improved performance by increasing the number of threads from 2 to 3.
+    - Collision Detection Improvements:
+    - Added CollisionPair struct for better collision tracking.
+    - Improved wall collision handling and resolution logic.
+    - Implemented continuous force application when the mouse button is held.
+    - Gravity Forces: Added gravity forces to influence particle movement.
+    - Trajectory-Based Collision Detection: Implemented a more sophisticated collision detection algorithm based on particle trajectories.
+    - Overall Collision Overhaul: Enhanced the collision detection and resolution mechanisms for better performance and accuracy.
+
+
+
 <h3>The Breakdown:</h3>
 
 The Program Starts By Initializing A Window Based Upon The Custom `ParticleWindow` Class. This Class Works As Means Of Encapsulating All Data Pertaining To The Simulation Including A GLFW Window, The Shader For This Provided Window, As Well As Data Pertaining To Rendering And The Current Particles Being Simulated.
 
 <h4>Initialization</h4>
 
-When The Process Initializes The Class, It Starts By Contextualizing The Window For OpenGL Buffer Contexting As Well As Generating Our Particles Through `initParticles(...)`.
-
+When The Process Initializes The Class, It Starts By Contextualizing The Window For OpenGL Buffer Contexting As Well As Generating Our Particles Through `initParticles(...)`. The Window Size Has Been Increased To 1900x1900 For Better Visualization, And The Particle Count Has Been Increased To 5000 To Test Performance With More Particles.
+ 
 ```C++
 ParticleWindow::ParticleWindow(int width, int height)
     : particles(PARTICLE_COUNT), collisionMatrix(BIN_SIZE), updateBarrier(NUM_THREADS + 1), renderBarrier(NUM_THREADS + 1)
@@ -75,20 +90,20 @@ void ParticleWindow::initParticles(std::vector<GLuint>& indices)
 {
     std::random_device rd;
     std::mt19937 seed(rd());
-    std::uniform_real_distribution<float> radiusDist(0.005f, 0.025f);
+    std::uniform_real_distribution<float> radiusDist(0.005f, 0.01f);
     std::uniform_real_distribution<float> positionDist(-0.799f, 0.799f);
-    std::uniform_real_distribution<float> colorDist(0.1f, 1.0f);
+    std::uniform_real_distribution<float> colorDist(0.3f, 1.0f);
+    std::uniform_real_distribution<float> colorDist2(0.0f, 0.2f);
     std::uniform_real_distribution<float> velocityDist(-0.00015f, 0.00015f);
 
-    for (unsigned int i = 0; i < PARTICLE_COUNT; i++)
+    for (unsigned int i = 0, centerOffset; i < PARTICLE_COUNT; i++)
     {
         particles.centroids[i] = glm::vec2(positionDist(seed), positionDist(seed));
         particles.radii[i] = radiusDist(seed);
-        particles.colors[i] = glm::vec3(colorDist(seed), colorDist(seed), colorDist(seed));
+        particles.colors[i] = glm::vec3(colorDist2(seed), colorDist2(seed), colorDist(seed));
         particles.velocities[i] = glm::vec2(velocityDist(seed), velocityDist(seed)) / particles.radii[i];
         particles.IDs[i] = vertices.size();
 
-        // Generate initial vertices
         vertices.push_back({ particles.centroids[i], particles.colors[i] });
         for (int j = 0; j < SEGMENT_CNT; ++j)
         {
@@ -96,6 +111,17 @@ void ParticleWindow::initParticles(std::vector<GLuint>& indices)
             glm::vec2 pos = particles.centroids[i] + particles.radii[i] * glm::vec2(cos(angle), sin(angle));
             vertices.push_back({ pos, particles.colors[i] });
         }
+
+        centerOffset = vertices.size() - SEGMENT_CNT - 1;
+        for (unsigned int j = 0; j < SEGMENT_CNT - 1; ++j)
+        {
+            indices.push_back(centerOffset);
+            indices.push_back(centerOffset + j + 1);
+            indices.push_back(centerOffset + j + 2);
+        }
+        indices.push_back(centerOffset);
+        indices.push_back(centerOffset + SEGMENT_CNT);
+        indices.push_back(centerOffset + 1);
     }
 }
 ```
@@ -109,7 +135,7 @@ for (int i = 0; i < NUM_THREADS; ++i)
     threads.emplace_back(&ParticleWindow::updateParticlesThreaded, this, i);
 }
 ```
-Each Thread Does The Motion & Collision Detection For Particles It Is Delegated. This Delegation Is Done By Providing Each Thread With A Start Position In The SoA Starting At Index 0 And Going Up Based On Its Provided `thread_id` (Simply What Thread Was Initialized First, Second, Etc. [i.e., first thread initialized is 0, second is 1]) Then It Increments By The `NUM_THREADS` We Have To Allow It To Jump Across To The Next Thread It Is Delegated, Ensuring Multiple Threads Don't Access The Same Particle (Which Could Lead To Double-Updates Which Could Lead To Crashes Or Unintended Behavior). Each Particle Will Reflect Off Window Borders By Inverting Its Velocity, And If Colliding With A Particle Will Cause The Binding Impulsive Force On These Two Particles; This Force Is Light To Allow Bonds To Be Broken And To Ensure Particles Don't Snap Together And Is More A Gradual Attraction Towards Each Other.
+Each Thread Does The Motion & Collision Detection For Particles It Is Delegated. This Delegation Is Done By Providing Each Thread With A Start Position In The SoA Starting At Index 0 And Going Up Based On Its Provided `thread_id` (Simply What Thread Was Initialized First, Second, Etc. [i.e., first thread initialized is 0, second is 1]) Then It Increments By The `NUM_THREADS` We Have To Allow It To Jump Across To The Next Thread It Is Delegated, Ensuring Multiple Threads Don't Access The Same Particle (Which Could Lead To Double-Updates Which Could Lead To Crashes Or Unintended Behavior). Each Particle Will Reflect Off Window Borders By Inverting Its Velocity, And If Colliding With A Particle Will Cause The Binding Impulsive Force On These Two Particles; This Force Is Light To Allow Bonds To Be Broken And To Ensure Particles Don't Snap Together And Is More A Gradual Attraction Towards Each Other. The Number Of Threads Has Been Increased To 3 To Better Distribute The Workload.
 
 ```C++
 void ParticleWindow::updateParticlesThreaded(int thread_id)
