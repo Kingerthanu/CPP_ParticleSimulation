@@ -22,7 +22,7 @@ We Continue To Utilize OpenGL For Rendering And Have Refined Our Internal Data S
 _**Key Differences From Patch 1:**_
 
 * **Collision Dynamics:**
-* Patch 1’s Particles Adhered Together Upon Collision, Resulting In A Visual "Bonding." In Patch 2, We Now Implement Collision Responses That Push Particles Apart, Simulating Non-Rigid Impacts More Akin To Realistic Elastic Collisions. This Removes The "Sticky" Interactions And Allows Particles To Scatter And Spread. This Collision Response Is Handled Using The `resolveCollision(...)` Function, Which Updates The Velocities Of Colliding Particles To Simulate A Physically Accurate Separation.
+  * Patch 1’s Particles Adhered Together Upon Collision, Resulting In A Visual "Bonding." In Patch 2, We Now Implement Collision Responses That Push Particles Apart, Simulating Non-Rigid Impacts More Akin To Realistic Elastic Collisions. This Removes The "Sticky" Interactions And Allows Particles To Scatter And Spread. This Collision Response Is Handled Using The `resolveCollision(...)` Function, Which Updates The Velocities Of Colliding Particles To Simulate A Physically Accurate Separation.
 
 * **Gravitational Simulation & Continuous Forces:** A Mild Gravitational Pull Is Introduced, Continuously Nudging Particles Downward (Negative Y-Direction), And Frictional Damping Has Also Been Applied To Gradually Reduce Velocity Over Time. These Forces, Combined With Repulsive Collisions, Produce More Visually Rich And Physically Intuitive Behavior. Gravity Is Simulated Through A Constant Update To The `particles.velocities` Array In The `updateParticlesThreaded(...)` Function, While Frictional Damping Is Applied By Scaling The Velocities To Simulate Energy Loss.
 
